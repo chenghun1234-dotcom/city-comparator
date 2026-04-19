@@ -1,15 +1,18 @@
 import { NextResponse } from 'next/server';
 import { getCoords, fetchWeather, fetchTravelpayoutsFlights, fetchHotelPrices, fetchTeleportData, calculateNomadScore } from '@/lib/api-fetchers';
 
-export const runtime = 'edge';
+// Switched from 'edge' to 'nodejs' for better stability and longer timeouts
+export const runtime = 'nodejs';
 
 export async function GET(request: Request) {
+  console.log(`[API REQUEST] Started comparison at ${new Date().toISOString()}`);
+  
   // RapidAPI Security Gate
   const proxySecret = process.env.RAPIDAPI_PROXY_SECRET;
   const incomingSecret = request.headers.get('x-rapidapi-proxy-secret');
 
-  // If a secret is set in environment, enforce it.
   if (proxySecret && incomingSecret !== proxySecret) {
+    console.warn(`[AUTH FAILED] Invalid proxy secret from ${request.headers.get('x-forwarded-for')}`);
     return NextResponse.json({ error: "Unauthorized: Invalid RapidAPI Proxy Secret" }, { status: 401 });
   }
 
@@ -17,15 +20,18 @@ export async function GET(request: Request) {
   const city1 = searchParams.get('city1') || 'ICN';
   const city2 = searchParams.get('city2') || 'BKK';
 
+  console.log(`[API ARGS] city1: ${city1}, city2: ${city2}`);
+
   try {
     // 1. Parallel fetching for base coordinates
     const [city1Geo, city2Geo] = await Promise.all([
       getCoords(city1),
       getCoords(city2)
     ]);
+    console.log(`[GEO SUCCESS] ${city1} -> ${city1Geo.name}, ${city2} -> ${city2Geo.name}`);
 
     // 2. Parallel fetching for all other metrics
-    // We wrap each fetch in an individual try/catch or ensure default values in fetchers
+    console.log(`[DATA FETCH] Starting parallel metrics fetch...`);
     const [weather1, weather2, flightData, hotel1, hotel2, teleport1, teleport2] = await Promise.all([
       fetchWeather(city1Geo.latitude, city1Geo.longitude),
       fetchWeather(city2Geo.latitude, city2Geo.longitude),
@@ -35,6 +41,7 @@ export async function GET(request: Request) {
       fetchTeleportData(city1),
       fetchTeleportData(city2)
     ]);
+    console.log(`[DATA SUCCESS] Metrics fetch completed.`);
 
     // 3. Calculate Nomad Scores (Defensive)
     const score1 = calculateNomadScore(teleport1);
@@ -106,6 +113,7 @@ export async function GET(request: Request) {
       }
     };
 
+    console.log(`[API COMPLETE] Returning success response.`);
     return NextResponse.json(result, {
       status: 200,
       headers: {
@@ -114,7 +122,7 @@ export async function GET(request: Request) {
     });
 
   } catch (error) {
-    console.error("Critical API Error:", error);
+    console.error("[CRITICAL ERROR]", error);
     return NextResponse.json({ 
       error: "Service temporarily unavailable", 
       message: error instanceof Error ? error.message : "Unknown error"
