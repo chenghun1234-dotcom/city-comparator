@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Outfit:wght@100..900&display=swap');
+
+@theme {
+  --font-sans: "Inter", sans-serif;
+  --font-display: "Outfit", sans-serif;
+  
+  --color-background: #0f172a;
+  --color-foreground: #f8fafc;
+  --color-primary: #38bdf8;
+  --color-secondary: #818cf8;
+  --color-accent: #f472b6;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground font-sans;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, .font-display {
+    @apply font-display;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl;
+  }
+  
+  .glass-input {
+    @apply bg-slate-800/50 border border-white/10 rounded-2xl px-6 py-4 outline-none focus:ring-2 focus:ring-sky-400 transition-all;
+  }
+  
+  .btn-primary {
+    @apply bg-gradient-to-r from-sky-400 to-indigo-500 text-white font-bold py-4 px-8 rounded-2xl shadow-lg hover:shadow-sky-500/30 hover:scale-105 active:scale-95 transition-all;
+  }
+  
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-sky-400 to-indigo-400;
+  }
+}
+
+/* Animations */
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.mesh-bg {
+  background-image: 
+    radial-gradient(at 0% 0%, hsla(210,100%,10%,1) 0, transparent 50%), 
+    radial-gradient(at 50% 0%, hsla(225,100%,15%,1) 0, transparent 50%), 
+    radial-gradient(at 100% 0%, hsla(240,100%,10%,1) 0, transparent 50%);
+  background-attachment: fixed;
+}

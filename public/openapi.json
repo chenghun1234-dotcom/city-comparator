@@ -1,0 +1,132 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Digital Nomad City Comparator API",
+    "description": "Compare two cities for digital nomads based on weather, living costs, and safety. Includes a custom Nomad Score and flight booking deep links.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://your-app.vercel.app",
+      "description": "Production Server"
+    }
+  ],
+  "paths": {
+    "/api/v1/compare": {
+      "get": {
+        "summary": "Compare two cities",
+        "parameters": [
+          {
+            "name": "city1",
+            "in": "query",
+            "description": "Origin city code (e.g., ICN, NYC)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "ICN"
+            }
+          },
+          {
+            "name": "city2",
+            "in": "query",
+            "description": "Destination city code (e.g., BKK, LON)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "BKK"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful comparison",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComparisonResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ComparisonResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "request_id": { "type": "string" },
+              "timestamp": { "type": "string" },
+              "currency": { "type": "string" }
+            }
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "recommended_city": { "type": "string" },
+              "reason": { "type": "string" }
+            }
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "city1": { "$ref": "#/components/schemas/CityData" },
+              "city2": { "$ref": "#/components/schemas/CityData" },
+              "travel": {
+                "type": "object",
+                "properties": {
+                  "min_price": { "type": "number" },
+                  "booking_link": { "type": "string" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "CityData": {
+        "type": "object",
+        "properties": {
+          "info": {
+            "type": "object",
+            "properties": {
+              "code": { "type": "string" },
+              "name": { "type": "string" },
+              "nomad_score": { "type": "string" }
+            }
+          },
+          "weather": {
+            "type": "object",
+            "properties": {
+              "temp": { "type": "number" },
+              "condition": { "type": "number" },
+              "high": { "type": "number" },
+              "low": { "type": "number" }
+            }
+          },
+          "metrics": {
+            "type": "object",
+            "properties": {
+              "internet": { "type": "number" },
+              "safety": { "type": "number" },
+              "cost_of_living": { "type": "number" }
+            }
+          }
+        }
+      }
+    }
+  }
+}
