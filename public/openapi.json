@@ -7,8 +7,8 @@
   },
   "servers": [
     {
-      "url": "https://your-app.vercel.app",
-      "description": "Production Server"
+      "url": "https://city-comparator.vercel.app",
+      "description": "Production Server (Vercel)"
     }
   ],
   "paths": {

@@ -8,6 +8,7 @@ export async function GET(request: Request) {
   const proxySecret = process.env.RAPIDAPI_PROXY_SECRET;
   const incomingSecret = request.headers.get('x-rapidapi-proxy-secret');
 
+  // If a secret is set in environment, enforce it.
   if (proxySecret && incomingSecret !== proxySecret) {
     return NextResponse.json({ error: "Unauthorized: Invalid RapidAPI Proxy Secret" }, { status: 401 });
   }
@@ -23,7 +24,8 @@ export async function GET(request: Request) {
       getCoords(city2)
     ]);
 
-    // 2. Parallel fetching for all other metrics (Travelpayouts, Weather, Teleport)
+    // 2. Parallel fetching for all other metrics
+    // We wrap each fetch in an individual try/catch or ensure default values in fetchers
     const [weather1, weather2, flightData, hotel1, hotel2, teleport1, teleport2] = await Promise.all([
       fetchWeather(city1Geo.latitude, city1Geo.longitude),
       fetchWeather(city2Geo.latitude, city2Geo.longitude),
@@ -34,11 +36,11 @@ export async function GET(request: Request) {
       fetchTeleportData(city2)
     ]);
 
-    // 3. Calculate Nomad Scores
+    // 3. Calculate Nomad Scores (Defensive)
     const score1 = calculateNomadScore(teleport1);
     const score2 = calculateNomadScore(teleport2);
 
-    // 4. Construct response DTO
+    // 4. Construct response DTO with strict null/undefined checks
     const result = {
       status: "success",
       meta: {
@@ -47,59 +49,59 @@ export async function GET(request: Request) {
         currency: "USD",
       },
       summary: {
-        recommended_city: parseFloat(score1) > parseFloat(score2) ? city1Geo.name : city2Geo.name,
+        recommended_city: parseFloat(score1) > parseFloat(score2) ? (city1Geo.name || city1) : (city2Geo.name || city2),
         reason: parseFloat(score1) > parseFloat(score2) 
-          ? `${city1Geo.name} has a higher Nomad Score.`
-          : `${city2Geo.name} has a higher Nomad Score.`
+          ? `${city1Geo.name || city1} has a higher Nomad Score.`
+          : `${city2Geo.name || city2} has a higher Nomad Score.`
       },
       data: {
         city1: {
           info: {
             code: city1,
-            name: city1Geo.name,
+            name: city1Geo.name || city1,
             nomad_score: score1
           },
-          weather: weather1 ? {
+          weather: weather1?.current_weather ? {
             temp: weather1.current_weather.temperature,
             condition: weather1.current_weather.weathercode,
-            high: weather1.daily.temperature_2m_max[0],
-            low: weather1.daily.temperature_2m_min[0]
+            high: weather1.daily?.temperature_2m_max?.[0] || 'N/A',
+            low: weather1.daily?.temperature_2m_min?.[0] || 'N/A'
           } : null,
-          metrics: teleport1 ? {
-            internet: teleport1.scores["Internet Access"],
-            safety: teleport1.scores["Safety"],
-            cost_of_living: teleport1.scores["Cost of Living"]
+          metrics: teleport1?.scores ? {
+            internet: teleport1.scores["Internet Access"] || 0,
+            safety: teleport1.scores["Safety"] || 0,
+            cost_of_living: teleport1.scores["Cost of Living"] || 0
           } : null,
           lodging: {
-            avg_price: hotel1.price,
-            booking_link: hotel1.link
+            avg_price: hotel1?.price || 'N/A',
+            booking_link: hotel1?.link || '#'
           }
         },
         city2: {
           info: {
             code: city2,
-            name: city2Geo.name,
+            name: city2Geo.name || city2,
             nomad_score: score2
           },
-          weather: weather2 ? {
+          weather: weather2?.current_weather ? {
             temp: weather2.current_weather.temperature,
             condition: weather2.current_weather.weathercode,
-            high: weather2.daily.temperature_2m_max[0],
-            low: weather2.daily.temperature_2m_min[0]
+            high: weather2.daily?.temperature_2m_max?.[0] || 'N/A',
+            low: weather2.daily?.temperature_2m_min?.[0] || 'N/A'
           } : null,
-          metrics: teleport2 ? {
-            internet: teleport2.scores["Internet Access"],
-            safety: teleport2.scores["Safety"],
-            cost_of_living: teleport2.scores["Cost of Living"]
+          metrics: teleport2?.scores ? {
+            internet: teleport2.scores["Internet Access"] || 0,
+            safety: teleport2.scores["Safety"] || 0,
+            cost_of_living: teleport2.scores["Cost of Living"] || 0
           } : null,
           lodging: {
-            avg_price: hotel2.price,
-            booking_link: hotel2.link
+            avg_price: hotel2?.price || 'N/A',
+            booking_link: hotel2?.link || '#'
           }
         },
         travel: {
-          min_price: flightData.price,
-          booking_link: flightData.link
+          min_price: flightData?.price || "N/A",
+          booking_link: flightData?.link || "#"
         }
       }
     };
@@ -112,7 +114,10 @@ export async function GET(request: Request) {
     });
 
   } catch (error) {
-    console.error("API Error:", error);
-    return NextResponse.json({ error: "Failed to fetch city comparison data" }, { status: 500 });
+    console.error("Critical API Error:", error);
+    return NextResponse.json({ 
+      error: "Service temporarily unavailable", 
+      message: error instanceof Error ? error.message : "Unknown error"
+    }, { status: 500 });
   }
 }
