@@ -1,37 +1,28 @@
 import { NextResponse } from 'next/server';
 import { getCoords, fetchWeather, fetchTravelpayoutsFlights, fetchHotelPrices, fetchTeleportData, calculateNomadScore } from '@/lib/api-fetchers';
 
-// Switched from 'edge' to 'nodejs' for better stability and longer timeouts
-export const runtime = 'nodejs';
+// Force dynamic to prevent SSG path issues in production
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-  console.log(`[API REQUEST] Started comparison at ${new Date().toISOString()}`);
-  
+  const { searchParams } = new URL(request.url);
+  const city1 = searchParams.get('city1') || 'ICN';
+  const city2 = searchParams.get('city2') || 'BKK';
+
   // RapidAPI Security Gate
   const proxySecret = process.env.RAPIDAPI_PROXY_SECRET;
   const incomingSecret = request.headers.get('x-rapidapi-proxy-secret');
 
   if (proxySecret && incomingSecret !== proxySecret) {
-    console.warn(`[AUTH FAILED] Invalid proxy secret from ${request.headers.get('x-forwarded-for')}`);
-    return NextResponse.json({ error: "Unauthorized: Invalid RapidAPI Proxy Secret" }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { searchParams } = new URL(request.url);
-  const city1 = searchParams.get('city1') || 'ICN';
-  const city2 = searchParams.get('city2') || 'BKK';
-
-  console.log(`[API ARGS] city1: ${city1}, city2: ${city2}`);
-
   try {
-    // 1. Parallel fetching for base coordinates
     const [city1Geo, city2Geo] = await Promise.all([
       getCoords(city1),
       getCoords(city2)
     ]);
-    console.log(`[GEO SUCCESS] ${city1} -> ${city1Geo.name}, ${city2} -> ${city2Geo.name}`);
 
-    // 2. Parallel fetching for all other metrics
-    console.log(`[DATA FETCH] Starting parallel metrics fetch...`);
     const [weather1, weather2, flightData, hotel1, hotel2, teleport1, teleport2] = await Promise.all([
       fetchWeather(city1Geo.latitude, city1Geo.longitude),
       fetchWeather(city2Geo.latitude, city2Geo.longitude),
@@ -41,91 +32,24 @@ export async function GET(request: Request) {
       fetchTeleportData(city1),
       fetchTeleportData(city2)
     ]);
-    console.log(`[DATA SUCCESS] Metrics fetch completed.`);
 
-    // 3. Calculate Nomad Scores (Defensive)
     const score1 = calculateNomadScore(teleport1);
     const score2 = calculateNomadScore(teleport2);
 
-    // 4. Construct response DTO with strict null/undefined checks
-    const result = {
+    return NextResponse.json({
       status: "success",
-      meta: {
-        request_id: crypto.randomUUID(),
-        timestamp: new Date().toISOString(),
-        currency: "USD",
-      },
       summary: {
-        recommended_city: parseFloat(score1) > parseFloat(score2) ? (city1Geo.name || city1) : (city2Geo.name || city2),
-        reason: parseFloat(score1) > parseFloat(score2) 
-          ? `${city1Geo.name || city1} has a higher Nomad Score.`
-          : `${city2Geo.name || city2} has a higher Nomad Score.`
+        recommended_city: parseFloat(score1) > parseFloat(score2) ? (city1Geo.name) : (city2Geo.name),
+        reason: `${parseFloat(score1) > parseFloat(score2) ? city1Geo.name : city2Geo.name} has better metrics.`
       },
       data: {
-        city1: {
-          info: {
-            code: city1,
-            name: city1Geo.name || city1,
-            nomad_score: score1
-          },
-          weather: weather1?.current_weather ? {
-            temp: weather1.current_weather.temperature,
-            condition: weather1.current_weather.weathercode,
-            high: weather1.daily?.temperature_2m_max?.[0] || 'N/A',
-            low: weather1.daily?.temperature_2m_min?.[0] || 'N/A'
-          } : null,
-          metrics: teleport1?.scores ? {
-            internet: teleport1.scores["Internet Access"] || 0,
-            safety: teleport1.scores["Safety"] || 0,
-            cost_of_living: teleport1.scores["Cost of Living"] || 0
-          } : null,
-          lodging: {
-            avg_price: hotel1?.price || 'N/A',
-            booking_link: hotel1?.link || '#'
-          }
-        },
-        city2: {
-          info: {
-            code: city2,
-            name: city2Geo.name || city2,
-            nomad_score: score2
-          },
-          weather: weather2?.current_weather ? {
-            temp: weather2.current_weather.temperature,
-            condition: weather2.current_weather.weathercode,
-            high: weather2.daily?.temperature_2m_max?.[0] || 'N/A',
-            low: weather2.daily?.temperature_2m_min?.[0] || 'N/A'
-          } : null,
-          metrics: teleport2?.scores ? {
-            internet: teleport2.scores["Internet Access"] || 0,
-            safety: teleport2.scores["Safety"] || 0,
-            cost_of_living: teleport2.scores["Cost of Living"] || 0
-          } : null,
-          lodging: {
-            avg_price: hotel2?.price || 'N/A',
-            booking_link: hotel2?.link || '#'
-          }
-        },
-        travel: {
-          min_price: flightData?.price || "N/A",
-          booking_link: flightData?.link || "#"
-        }
+        city1: { info: { code: city1, name: city1Geo.name, nomad_score: score1 }, weather: weather1?.current_weather, metrics: teleport1?.scores, lodging: hotel1 },
+        city2: { info: { code: city2, name: city2Geo.name, nomad_score: score2 }, weather: weather2?.current_weather, metrics: teleport2?.scores, lodging: hotel2 },
+        travel: flightData
       }
-    };
-
-    console.log(`[API COMPLETE] Returning success response.`);
-    return NextResponse.json(result, {
-      status: 200,
-      headers: {
-        'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
-      },
     });
 
   } catch (error) {
-    console.error("[CRITICAL ERROR]", error);
-    return NextResponse.json({ 
-      error: "Service temporarily unavailable", 
-      message: error instanceof Error ? error.message : "Unknown error"
-    }, { status: 500 });
+    return NextResponse.json({ error: "Service Error" }, { status: 500 });
   }
 }
