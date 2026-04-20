@@ -8,7 +8,7 @@
 
 @layer base {
   body {
-    background-color: #0f172a;
+    background-color: #020617;
     color: #f8fafc;
     font-family: var(--font-sans);
     overflow-x: hidden;
@@ -21,42 +21,53 @@
 
 @layer components {
   .glass-card {
-    background-color: rgba(15, 23, 42, 0.5);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 1.5rem;
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   }
   
   .glass-input {
-    background-color: rgba(30, 41, 59, 0.5);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 1rem;
-    padding: 1rem 1.5rem;
-    outline: none;
-    transition: all 0.2s;
+    background: rgba(30, 41, 59, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(8px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .glass-input:focus {
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.1);
   }
   
-  .btn-primary {
-    background: linear-gradient(to right, #38bdf8, #6366f1);
-    color: white;
-    font-weight: 700;
-    padding: 1rem 2rem;
-    border-radius: 1rem;
-    transition: all 0.2s;
+  .premium-gradient {
+    background: linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%);
   }
   
-  .text-gradient {
-    background: linear-gradient(to right, #38bdf8, #818cf8);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+  .text-glow {
+    text-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
   }
 }
 
 .mesh-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -1;
+  background-color: #020617;
   background-image: 
-    radial-gradient(at 0% 0%, hsla(210,100%,10%,1) 0, transparent 50%), 
-    radial-gradient(at 50% 0%, hsla(225,100%,15%,1) 0, transparent 50%), 
-    radial-gradient(at 100% 0%, hsla(240,100%,10%,1) 0, transparent 50%);
-  background-attachment: fixed;
+    radial-gradient(circle at 0% 0%, rgba(14, 165, 233, 0.15) 0%, transparent 40%),
+    radial-gradient(circle at 100% 100%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
+    radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 1) 0%, transparent 100%);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.6s ease-out forwards;
 }

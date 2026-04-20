@@ -3,7 +3,7 @@
   "info": {
     "title": "Digital Nomad City Comparator API",
     "description": "Compare two cities for digital nomads based on weather, living costs, and safety. Includes a custom Nomad Score and flight booking deep links.",
-    "version": "1.0.0"
+    "version": "1.1.0"
   },
   "servers": [
     {
@@ -48,30 +48,43 @@
               }
             }
           },
-          "400": {
-            "description": "Invalid parameters"
+          "401": {
+            "description": "Unauthorized - Missing or invalid RapidAPI Proxy Secret"
           },
           "500": {
             "description": "Internal server error"
           }
-        }
+        },
+        "security": [
+          {
+            "RapidAPIKey": []
+          }
+        ]
       }
     }
   },
   "components": {
+    "securitySchemes": {
+      "RapidAPIKey": {
+        "type": "apiKey",
+        "name": "X-RapidAPI-Key",
+        "in": "header"
+      }
+    },
     "schemas": {
       "ComparisonResponse": {
         "type": "object",
         "properties": {
           "status": {
-            "type": "string"
+            "type": "string",
+            "example": "success"
           },
           "meta": {
             "type": "object",
             "properties": {
               "request_id": { "type": "string" },
-              "timestamp": { "type": "string" },
-              "currency": { "type": "string" }
+              "timestamp": { "type": "string", "format": "date-time" },
+              "currency": { "type": "string", "default": "USD" }
             }
           },
           "summary": {
@@ -89,8 +102,9 @@
               "travel": {
                 "type": "object",
                 "properties": {
-                  "min_price": { "type": "number" },
-                  "booking_link": { "type": "string" }
+                  "min_price": { "type": "number", "description": "Cheapest flight price" },
+                  "booking_link": { "type": "string", "description": "Affiliate booking link" },
+                  "airline": { "type": "string" }
                 }
               }
             }
@@ -111,18 +125,22 @@
           "weather": {
             "type": "object",
             "properties": {
-              "temp": { "type": "number" },
-              "condition": { "type": "number" },
-              "high": { "type": "number" },
-              "low": { "type": "number" }
+              "temperature": { "type": "number" },
+              "weathercode": { "type": "number" }
             }
           },
           "metrics": {
             "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            },
+            "description": "Dynamic mapping of nomad metrics (Internet, Cost, Safety, etc.)"
+          },
+          "lodging": {
+            "type": "object",
             "properties": {
-              "internet": { "type": "number" },
-              "safety": { "type": "number" },
-              "cost_of_living": { "type": "number" }
+              "price": { "type": "string" },
+              "link": { "type": "string" }
             }
           }
         }

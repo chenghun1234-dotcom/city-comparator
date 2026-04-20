@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Search, MapPin, Plane, Loader2, Thermometer, Wifi, DollarSign, Star, Info } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, MapPin, Plane, Loader2, Thermometer, Wifi, Shield, DollarSign, Star, Code, Copy, Check } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,186 +11,246 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [devMode, setDevMode] = useState(false);
+  const [copied, setCopied] = useState(false);
 
-  const fetchComparison = async (e?: React.MouseEvent) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
+  const fetchComparison = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     
     setLoading(true);
     setError(null);
     
     try {
-      const url = `/api/v1/compare?city1=${city1.trim()}&city2=${city2.trim()}&t=${Date.now()}`;
+      const url = `/api/v1/compare?city1=${city1.trim()}&city2=${city2.trim()}`;
       const res = await fetch(url, { cache: 'no-store' });
       const result = await res.json();
       
-      if (!res.ok) throw new Error(result.error || 'Service Busy');
-      
-      // Secondary UI normalization
+      if (!res.ok) throw new Error(result.message || 'Service Unavailable');
       setData(result);
-    } catch (err) {
-      console.error("UI Final Error:", err);
-      setError('Connection stable, analyzing data...');
+    } catch (err: any) {
+      console.error("Fetch Error:", err);
+      setError(err.message || 'Failed to fetch data');
     } finally {
       setLoading(false);
     }
   };
 
-  const cData = (d: any, code: string) => ({
-    name: d?.info?.name || code,
-    score: d?.info?.nomad_score || '7.5',
-    temp: d?.weather?.temperature ?? d?.weather?.temp ?? 'N/A',
-    internet: Number(d?.metrics?.["Internet Access"] || d?.metrics?.internet || 5.0),
-    cost: Number(d?.metrics?.["Cost of Living"] || d?.metrics?.cost_of_living || 5.0),
-    hotel: d?.lodging?.price || 'N/A',
-    hotelLink: d?.lodging?.link || '#'
-  });
+  const copyJson = () => {
+    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
-    <main className="min-h-screen bg-[#0f172a] text-slate-100 p-6 md:p-12 flex flex-col items-center">
-      <div className="max-w-4xl w-full flex flex-col items-center">
-        
-        {/* Header - No motion */}
-        <div className="text-center mb-12 opacity-0 transition-opacity duration-1000" style={{ opacity: 1 }}>
-          <div className="inline-block bg-sky-500/10 border border-sky-500/20 px-3 py-1 rounded-full text-sky-400 text-[10px] font-bold tracking-[0.2em] uppercase mb-4">
-            Affiliate Monetization Active
-          </div>
-          <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-4 text-white">
-            Nomad<span className="text-sky-400">Score</span>
-          </h1>
-          <p className="text-slate-400 text-sm max-w-sm mx-auto uppercase tracking-widest font-medium">
-            Next-Gen Lifestyle Comparison
-          </p>
+    <main className="min-h-screen relative flex flex-col items-center py-12 px-4 md:px-8">
+      <div className="mesh-bg" />
+      
+      {/* Header Section */}
+      <header className="max-w-4xl w-full text-center mb-16 animate-fade-in">
+        <div className="inline-block px-4 py-1.5 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-400 text-[10px] font-bold tracking-[0.2em] uppercase mb-6 backdrop-blur-sm">
+          Monetized RapidAPI Engine v1.1
         </div>
+        <h1 className="text-6xl md:text-8xl font-black tracking-tighter mb-6 bg-clip-text text-transparent bg-gradient-to-b from-white to-slate-400">
+          Nomad<span className="text-sky-500 text-glow">Score</span>
+        </h1>
+        <p className="text-slate-400 text-sm md:text-base max-w-lg mx-auto leading-relaxed font-medium uppercase tracking-[0.3em] opacity-80 font-display">
+          Global Quality of Life & Logistics Analyzer
+        </p>
+      </header>
 
-        {/* Search Panel */}
-        <div className="w-full max-w-2xl bg-white/[0.03] border border-white/10 rounded-[2rem] p-8 md:p-10 mb-10 shadow-2xl backdrop-blur-xl">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Origin City</label>
-              <div className="relative">
-                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-sky-500" />
+      {/* Control Panel */}
+      <div className="w-full max-w-2xl glass-card rounded-[2.5rem] p-8 md:p-12 mb-12 animate-fade-in" style={{ animationDelay: '0.1s' }}>
+        <form onSubmit={fetchComparison} className="space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-2">Base Origin</label>
+              <div className="relative group">
+                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-sky-500 group-focus-within:scale-110 transition-transform" />
                 <input 
                   type="text"
                   value={city1}
                   onChange={(e) => setCity1(e.target.value.toUpperCase().slice(0, 3))}
-                  className="w-full bg-slate-800/50 border border-white/5 p-4 pl-12 rounded-xl text-white font-mono outline-none focus:border-sky-500/50 transition-all"
+                  className="w-full glass-input rounded-2xl py-4 pl-12 pr-4 text-white font-mono text-lg focus:outline-none"
+                  placeholder="ICN"
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Destination</label>
-              <div className="relative">
-                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-500" />
+            <div className="space-y-3">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-2">Target Destination</label>
+              <div className="relative group">
+                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-500 group-focus-within:scale-110 transition-transform" />
                 <input 
                   type="text"
                   value={city2}
                   onChange={(e) => setCity2(e.target.value.toUpperCase().slice(0, 3))}
-                  className="w-full bg-slate-800/50 border border-white/5 p-4 pl-12 rounded-xl text-white font-mono outline-none focus:border-indigo-500/50 transition-all"
+                  className="w-full glass-input rounded-2xl py-4 pl-12 pr-4 text-white font-mono text-lg focus:outline-none"
+                  placeholder="BKK"
                 />
               </div>
             </div>
           </div>
           
           <button 
-            type="button"
-            onClick={(e) => fetchComparison(e)}
+            type="submit"
             disabled={loading}
-            className="w-full bg-sky-500 hover:bg-sky-400 disabled:opacity-50 text-slate-900 font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+            className="w-full premium-gradient hover:opacity-90 disabled:opacity-50 text-white font-black py-5 rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-[0.98] shadow-lg shadow-sky-500/20"
           >
             {loading ? <Loader2 className="animate-spin w-5 h-5" /> : <Search className="w-5 h-5" />}
-            <span className="uppercase tracking-[0.2em] text-xs font-black">Generate Report</span>
+            <span className="uppercase tracking-[0.2em] text-xs">Run Comparison Engine</span>
           </button>
-          
-          {error && <div className="mt-4 text-center text-red-400 text-xs font-bold uppercase tracking-widest">{error}</div>}
-        </div>
-
-        {/* Results Panel */}
-        {data && data.data && (
-          <div className="w-full space-y-6 pt-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {[data.data.city1, data.data.city2].map((raw, i) => {
-                const c = cData(raw, i === 0 ? city1 : city2);
-                return (
-                  <div key={i} className="bg-slate-900/60 border border-white/5 p-8 rounded-[2rem] flex flex-col shadow-inner">
-                    <div className="flex justify-between items-start mb-8">
-                      <div>
-                        <h3 className="text-2xl font-bold text-white mb-1">{c.name}</h3>
-                        <span className="text-slate-600 font-mono text-[10px] tracking-widest uppercase">{c.code}</span>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-4xl font-black text-sky-400 tabular-nums">{c.score}</div>
-                        <div className="text-[8px] font-black text-slate-700 uppercase tracking-[0.3em]">Nomad Score</div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 mb-8">
-                      <div className="bg-white/5 p-5 rounded-3xl flex flex-col items-center">
-                        <DollarSign className="w-4 h-4 text-emerald-500 mb-2" />
-                        <div className="text-lg font-bold text-white">${c.hotel}</div>
-                        <div className="text-[8px] text-slate-500 font-black uppercase mt-1">Rent/Night</div>
-                      </div>
-                      <div className="bg-white/5 p-5 rounded-3xl flex flex-col items-center">
-                        <Thermometer className="w-4 h-4 text-sky-500 mb-2" />
-                        <div className="text-lg font-bold text-white">{c.temp}°C</div>
-                        <div className="text-[8px] text-slate-500 font-black uppercase mt-1">Live Weather</div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-6">
-                      <StatBar label="Wifi Speed" val={c.internet} />
-                      <StatBar label="Safety" val={c.cost} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {data.summary && (
-              <div className="bg-sky-500/10 border border-sky-500/20 p-6 rounded-2xl flex items-center gap-4">
-                <Star className="text-sky-500 w-5 h-5 fill-current" />
-                <p className="text-xs text-slate-300 font-bold leading-relaxed uppercase tracking-wider">
-                  Recommendation: {data.summary.recommended_city} — {data.summary.reason}
-                </p>
-              </div>
-            )}
-
-            {data.travel && (
-              <a href={data.travel.link || '#'} target="_blank" rel="noopener noreferrer" className="block w-full bg-indigo-500/10 border border-indigo-500/20 p-6 rounded-2xl hover:bg-indigo-500/15 transition-colors">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <Plane className="text-indigo-400 w-5 h-5" />
-                    <span className="text-xs font-bold text-white uppercase tracking-widest">Book Best Route via Aviasales (ID: 520319)</span>
-                  </div>
-                  <div className="text-xl font-black text-indigo-400">${data.travel.price}</div>
-                </div>
-              </a>
-            )}
+        </form>
+        
+        {error && (
+          <div className="mt-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-bold text-center uppercase tracking-widest">
+            {error}
           </div>
         )}
       </div>
-      <footer className="mt-20 opacity-30 text-[10px] font-black uppercase tracking-[0.5em] text-slate-500 pb-10">
-        Engine: Stable Node.js 20 • No-Motion Build
+
+      {/* Results Section */}
+      {data && data.data && (
+        <div className="w-full max-w-5xl space-y-8 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {[data.data.city1, data.data.city2].map((raw, i) => (
+              <CityCard key={i} data={raw} isPrimary={i === 0} />
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Logic/Reasoning */}
+            <div className="md:col-span-2 glass-card p-8 rounded-3xl border-sky-500/10 flex items-center gap-6">
+              <div className="w-12 h-12 rounded-2xl bg-sky-500/10 flex items-center justify-center shrink-0">
+                <Star className="text-sky-500 w-6 h-6 fill-current" />
+              </div>
+              <div>
+                <h4 className="text-[10px] font-black text-sky-400 uppercase tracking-[0.2em] mb-1">Expert Recommendation</h4>
+                <p className="text-sm text-slate-300 font-medium leading-relaxed">
+                  Best choice: <span className="text-white font-bold">{data.summary.recommended_city}</span>. {data.summary.reason}
+                </p>
+              </div>
+            </div>
+
+            {/* Travel CTA */}
+            <a 
+              href={data.data.travel.booking_link || '#'} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="glass-card p-8 rounded-3xl border-indigo-500/10 hover:bg-white/[0.05] transition-all group flex flex-col justify-center"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <Plane className="text-indigo-400 w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                <span className="text-2xl font-black text-white">${data.data.travel.min_price}</span>
+              </div>
+              <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest group-hover:text-indigo-400 transition-colors">
+                Book Best Route (Aviasales)
+              </p>
+            </a>
+          </div>
+
+          {/* Dev Tools */}
+          <div className="pt-12 flex flex-col items-center">
+            <button 
+              onClick={() => setDevMode(!devMode)}
+              className="flex items-center gap-2 px-6 py-3 rounded-full bg-white/5 border border-white/5 hover:bg-white/10 transition-colors text-[10px] font-black text-slate-500 uppercase tracking-widest"
+            >
+              <Code className="w-3.5 h-3.5" />
+              {devMode ? 'Hide Response' : 'Inspect API JSON'}
+            </button>
+            
+            {devMode && (
+              <div className="w-full mt-6 relative animate-fade-in">
+                <button 
+                  onClick={copyJson}
+                  className="absolute right-4 top-4 p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all"
+                >
+                  {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                </button>
+                <div className="glass-card rounded-[2rem] p-8 overflow-hidden">
+                  <pre className="text-xs font-mono text-sky-300/80 overflow-x-auto custom-scrollbar">
+                    {JSON.stringify(data, null, 2)}
+                  </pre>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      <footer className="mt-24 pb-12 text-center opacity-20 hover:opacity-40 transition-opacity">
+        <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.6em]">
+          Engineered for Latency • Secured for Profit • Built with Next.js 15
+        </p>
       </footer>
+
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.2); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(56, 189, 248, 0.4); }
+      `}</style>
     </main>
   );
 }
 
-function StatBar({ label, val }: any) {
-  const v = Number(val) || 5;
+function CityCard({ data, isPrimary }: { data: any, isPrimary: boolean }) {
+  const stats = [
+    { label: 'Internet', val: data.metrics['Internet Access'] || 5, icon: Wifi, color: 'text-sky-400' },
+    { label: 'Cost', val: data.metrics['Cost of Living'] || 5, icon: DollarSign, color: 'text-emerald-400' },
+    { label: 'Safety', val: data.metrics['Safety'] || 5, icon: Shield, color: 'text-rose-400' },
+  ];
+
   return (
-    <div className="space-y-2">
-      <div className="flex justify-between text-[8px] font-black text-slate-600 uppercase tracking-[0.2em] px-1">
-        <span>{label}</span>
-        <span className="text-slate-400">{v.toFixed(1)}/10</span>
+    <div className="glass-card p-10 rounded-[2.5rem] flex flex-col relative overflow-hidden group">
+      <div className={`absolute top-0 right-0 w-32 h-32 blur-[80px] opacity-20 ${isPrimary ? 'bg-sky-500' : 'bg-indigo-500'}`} />
+      
+      <div className="flex justify-between items-start mb-10 relative z-10">
+        <div>
+          <h3 className="text-3xl font-black text-white mb-2 group-hover:translate-x-1 transition-transform">{data.info.name}</h3>
+          <div className="flex items-center gap-2">
+            <span className="px-2 py-0.5 rounded bg-white/5 text-[9px] font-mono text-slate-500 font-bold uppercase tracking-widest border border-white/5">
+              {data.info.code}
+            </span>
+          </div>
+        </div>
+        <div className="text-right">
+          <div className={`text-5xl font-black tabular-nums transition-colors ${isPrimary ? 'text-sky-400' : 'text-indigo-400'}`}>
+            {data.info.nomad_score}
+          </div>
+          <p className="text-[8px] font-black text-slate-600 uppercase tracking-[0.2em] mt-1">Score</p>
+        </div>
       </div>
-      <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-        <div 
-          className="h-full bg-sky-500" 
-          style={{ width: `${v * 10}%`, transition: 'width 1s ease-in-out' }} 
-        />
+
+      <div className="grid grid-cols-2 gap-4 mb-10">
+        <div className="bg-white/[0.03] border border-white/[0.05] p-6 rounded-3xl group/item hover:bg-white/[0.06] transition-colors overflow-hidden relative">
+          <Thermometer className="w-4 h-4 text-sky-400 mb-3" />
+          <div className="text-2xl font-black text-white">{data.weather?.temperature || 'N/A'}°C</div>
+          <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-1">Current Weather</p>
+        </div>
+        <a href={data.lodging.link} target="_blank" rel="noopener noreferrer" className="bg-white/[0.03] border border-white/[0.05] p-6 rounded-3xl group/item hover:bg-white/[0.08] transition-colors relative block">
+          <DollarSign className="w-4 h-4 text-emerald-400 mb-3" />
+          <div className="text-2xl font-black text-white">${data.lodging.price}</div>
+          <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-1 underline pointer-events-none">Avg Nightly Stay</p>
+        </a>
+      </div>
+
+      <div className="space-y-6">
+        {stats.map((stat, idx) => (
+          <div key={idx} className="space-y-2.5">
+            <div className="flex justify-between items-center px-1">
+              <div className="flex items-center gap-2">
+                <stat.icon className={`w-3 h-3 ${stat.color} opacity-70`} />
+                <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">{stat.label}</span>
+              </div>
+              <span className="text-[9px] font-mono text-slate-400 font-bold">{stat.val.toFixed(1)}/10</span>
+            </div>
+            <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+              <div 
+                className={`h-full transition-all duration-1000 ease-out delay-${idx * 200} ${idx === 0 ? 'bg-sky-500' : idx === 1 ? 'bg-emerald-500' : 'bg-rose-500'}`}
+                style={{ width: `${stat.val * 10}%` }}
+              />
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

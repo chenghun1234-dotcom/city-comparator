@@ -91,18 +91,58 @@ export async function fetchHotelPrices(iata: string) {
   }
 }
 
+// Common Airport to City mapping for Teleport accuracy
+function resolveCityName(query: string, rawName: string) {
+  const q = query.toUpperCase();
+  const name = rawName.toLowerCase();
+  
+  const mapping: Record<string, string> = {
+    'ICN': 'Seoul',
+    'GMP': 'Seoul',
+    'BKK': 'Bangkok',
+    'DMK': 'Bangkok',
+    'JFK': 'New York',
+    'LGA': 'New York',
+    'EWR': 'New York',
+    'LHR': 'London',
+    'LGW': 'London',
+    'HND': 'Tokyo',
+    'NRT': 'Tokyo',
+    'CDG': 'Paris',
+    'ORY': 'Paris',
+    'SIN': 'Singapore',
+    'KUL': 'Kuala Lumpur',
+    'SFO': 'San Francisco',
+    'LAX': 'Los Angeles',
+  };
+
+  if (mapping[q]) return mapping[q];
+  
+  // Strip common suffixes that break Teleport
+  if (name.includes('international airport')) {
+    return rawName.replace(/international airport/gi, '').trim();
+  }
+  if (name.includes('airport')) {
+    return rawName.replace(/airport/gi, '').trim();
+  }
+  
+  return rawName;
+}
+
 // 5. City Metrics (Teleport) - Sequential step optimization
 export async function fetchTeleportData(cityName: string) {
   try {
+    const resolvedName = resolveCityName(cityName, cityName);
+    
     // Stage 1: Search - 2s limit
-    const searchRes = await fetchWithTimeout(`https://api.teleport.org/api/cities/?search=${encodeURIComponent(cityName)}`, {}, 2000);
+    const searchRes = await fetchWithTimeout(`https://api.teleport.org/api/cities/?search=${encodeURIComponent(resolvedName)}`, {}, 2000);
     const searchData = await searchRes.json();
     const cityLink = searchData._embedded?.["city:search-results"]?.[0]?._links?.["city:item"]?.href;
+    
+    // If first search fails, try a broader search with original name if different
     if (!cityLink) return null;
 
     // Stage 2: Get scores - 3s limit
-    // We attempt to derive the urban area link from the city name if the API is too slow
-    // But for robustness, we follow one level deeper only
     const cityRes = await fetchWithTimeout(cityLink, {}, 2000);
     const cityData = await cityRes.json();
     const urbanAreaLink = cityData._links?.["city:urban_area"]?.href;
@@ -117,7 +157,8 @@ export async function fetchTeleportData(cityName: string) {
     });
 
     return { scores: metrics, teleport_score: scoresData.teleport_city_score };
-  } catch {
+  } catch (error) {
+    console.error("Teleport Fetch Error:", error);
     return null; // Silent fallback
   }
 }
